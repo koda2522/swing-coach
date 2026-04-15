@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Swing Coach</title>
+<meta name="description" content="AIゴルフスイング診断アプリ">
+<meta name="theme-color" content="#1a472a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Swing Coach">
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiU3dpbmcgQ29hY2giLCJzaG9ydF9uYW1lIjoiU3dpbmciLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzFhNDcyYSIsInRoZW1lX2NvbG9yIjoiIzFhNDcyYSJ9">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ========== リセット・基本設定 ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --green-900: #0d2818;
+  --green-800: #1a472a;
+  --green-700: #245e38;
+  --green-600: #2d7a48;
+  --green-500: #38965a;
+  --green-400: #4caf6e;
+  --green-300: #81c995;
+  --green-200: #b7e4c7;
+  --green-100: #d8f3dc;
+  --green-50: #f0faf2;
+  --gold: #d4a843;
+  --gold-light: #f0d78c;
+  --white: #ffffff;
+  --gray-50: #f8f9fa;
+  --gray-100: #f1f3f5;
+  --gray-200: #e9ecef;
+  --gray-300: #dee2e6;
+  --gray-400: #adb5bd;
+  --gray-500: #868e96;
+  --gray-600: #495057;
+  --gray-700: #343a40;
+  --gray-800: #212529;
+  --red: #e03131;
+  --blue: #228be6;
+  --font-display: 'Oswald', sans-serif;
+  --font-body: 'Zen Kaku Gothic New', sans-serif;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-lg: 0 6px 24px rgba(0,0,0,0.1);
+}
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--gray-50);
+  color: var(--gray-800);
+  overflow: hidden;
+  font-size: 16px;
+}
+
+/* ========== アプリコンテナ ========== */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--white);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ========== ヘッダー ========== */
+.header {
+  background: linear-gradient(135deg, var(--green-900), var(--green-700));
+  color: var(--white);
+  padding: 18px 20px 14px;
+  flex-shrink: 0;
+}
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.app-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.app-title span { color: var(--gold); }
+.usage-badge {
+  background: rgba(255,255,255,0.15);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.usage-badge .count { color: var(--gold-light); font-weight: 700; }
+.level-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.level-label {
+  background: var(--gold);
+  color: var(--green-900);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 12px;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+.level-text { opacity: 0.9; font-size: 13px; }
+
+/* ========== タブ ========== */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--green-800);
+  flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1;
+  padding: 14px 0;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+.tab-btn.active {
+  color: var(--white);
+  background: rgba(255,255,255,0.1);
+  font-weight: 700;
+}
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  width: 60%;
+  height: 3px;
+  background: var(--gold);
+  border-radius: 3px 3px 0 0;
+}
+
+/* ========== メインコンテンツ ========== */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.page { display: none; padding: 18px; }
+.page.active { display: block; }
+
+/* ========== アップロードエリア ========== */
+.upload-area {
+  border: 2px dashed var(--green-300);
+  border-radius: var(--radius);
+  padding: 40px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--green-50);
+  margin-bottom: 14px;
+}
+.upload-area:active { background: var(--green-100); border-color: var(--green-500); }
+.upload-icon { font-size: 48px; margin-bottom: 10px; }
+.upload-text { font-size: 15px; color: var(--gray-500); }
+.upload-text strong { color: var(--green-700); display: block; font-size: 17px; margin-bottom: 6px; }
+.upload-hint {
+  font-size: 13px;
+  color: var(--gray-400);
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+/* 動画選択済み */
+.video-selected {
+  display: none;
+  background: var(--green-50);
+  border: 2px solid var(--green-400);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+.video-selected.active { display: flex; }
+.video-selected-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: var(--green-700);
+  font-weight: 700;
+}
+.video-selected-info .icon { font-size: 24px; }
+.remove-video-btn {
+  background: var(--gray-200);
+  color: var(--gray-600);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* ========== 診断ボタン ========== */
+.analyze-btn {
+  width: 100%;
+  padding: 18px;
+  background: linear-gradient(135deg, var(--green-600), var(--green-700));
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.3s;
+  display: none;
+}
+.analyze-btn:active { transform: scale(0.97); }
+.analyze-btn:disabled { background: var(--gray-300); cursor: not-allowed; }
+
+/* ========== ローディング ========== */
+.loading-overlay {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  text-align: center;
+}
+.loading-overlay.active { display: flex; }
+.loader {
+  width: 48px; height: 48px;
+  border: 4px solid var(--green-200);
+  border-top: 4px solid var(--green-600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: var(--gray-600); font-size: 15px; }
+.loading-sub { color: var(--gray-400); font-size: 13px; margin-top: 6px; }
+
+/* ========== 診断結果 ========== */
+.result-area { display: none; }
+.result-area.active { display: block; }
+
+/* レベルカード */
+.level-card {
+  background: linear-gradient(135deg, var(--green-50) 0%, var(--green-100) 100%);
+  border: 2px solid var(--green-300);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.level-card-intro {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin-bottom: 8px;
+}
+.level-card-value {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--green-700);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+.level-card-score {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--green-600);
+  margin-bottom: 6px;
+}
+.level-card-desc {
+  font-size: 14px;
+  color: var(--gray-600);
+  line-height: 1.6;
+}
+.score-bar-container {
+  margin-top: 14px;
+  background: var(--gray-200);
+  border-radius: 8px;
+  height: 12px;
+  overflow: hidden;
+  position: relative;
+}
+.score-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-400), var(--green-600));
+  border-radius: 8px;
+  transition: width 0.5s ease;
+}
+.score-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 4px;
+}
+
+/* カード共通 */
+.result-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--gray-200);
+}
+.result-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-card ul {
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--gray-700);
+  padding-left: 20px;
+}
+.result-card li { margin-bottom: 6px; }
+
+/* メモ */
+.memo-input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 15px;
+  resize: none;
+  margin-bottom: 12px;
+  background: var(--gray-50);
+}
+.memo-input::placeholder { color: var(--gray-400); }
+.memo-input:focus { outline: none; border-color: var(--green-500); }
+
+/* ボタン */
+.btn-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.btn-primary {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  background: var(--green-600);
+  color: var(--white);
+}
+.btn-primary:active { background: var(--green-700); }
+.btn-outline {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid var(--green-500);
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  background: var(--white);
+  color: var(--green-700);
+}
+.btn-outline:active { background: var(--green-50); }
+.btn-ghost {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font-body);
+  cursor: pointer;
+  background: var(--white);
+  color: var(--gray-500);
+}
+
+/* ========== チャット ========== */
+.chat-area {
+  display: none;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.chat-area.active { display: block; }
+.chat-messages {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 14px;
+  background: var(--gray-50);
+}
+.chat-msg {
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  line-height: 1.8;
+  max-width: 85%;
+}
+.chat-msg.user {
+  background: var(--green-600);
+  color: var(--white);
+  margin-left: auto;
+  border-bottom-right-radius: 2px;
+}
+.chat-msg.ai {
+  background: var(--white);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  border-bottom-left-radius: 2px;
+}
+.chat-msg.loading { color: var(--gray-400); font-style: italic; }
+.chat-input-row {
+  display: flex;
+  border-top: 1px solid var(--gray-200);
+}
+.chat-input {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+.chat-input:focus { outline: none; }
+.chat-send-btn {
+  padding: 14px 18px;
+  background: var(--green-600);
+  color: var(--white);
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ========== 履歴ページ ========== */
+.history-item {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--gray-200);
+  cursor: pointer;
+}
+.history-item:active { background: var(--gray-50); }
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.history-date { font-size: 13px; color: var(--gray-500); }
+.history-type {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  color: var(--white);
+}
+.history-type.full { background: var(--green-600); }
+.history-type.approach { background: var(--blue); }
+.history-type.putt { background: var(--gold); color: var(--green-900); }
+.history-level {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--green-700);
+}
+.history-score-sub {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+.history-memo {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--gray-400);
+  font-size: 15px;
+}
+.history-empty .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* 詳細オーバーレイ */
+.overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+.overlay.active { display: flex; }
+.overlay-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+.overlay-card .close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: var(--gray-200);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  cursor: pointer;
+}
+.delete-btn {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--red);
+  font-size: 14px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  margin-top: 14px;
+}
+
+/* ========== グラフページ ========== */
+.chart-container {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--gray-200);
+}
+.chart-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+
+/* よく指摘されるポイント（折りたたみ） */
+.tendency-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--gray-200);
+  margin-bottom: 16px;
+}
+.tendency-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.tendency-item {
+  border-bottom: 1px solid var(--gray-100);
+  padding: 10px 0;
+}
+.tendency-item:last-child { border: none; }
+.tendency-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--gray-700);
+  font-weight: 500;
+}
+.tendency-header:active { color: var(--green-700); }
+.tendency-count {
+  background: var(--green-100);
+  color: var(--green-700);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.tendency-arrow {
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-left: 8px;
+  transition: transform 0.3s;
+}
+.tendency-item.open .tendency-arrow { transform: rotate(180deg); }
+.tendency-details {
+  display: none;
+  padding: 10px 0 4px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--gray-600);
+}
+.tendency-item.open .tendency-details { display: block; }
+.tendency-detail-item {
+  padding: 4px 0 4px 12px;
+  border-left: 3px solid var(--green-200);
+  margin-bottom: 6px;
+}
+
+/* ========== ボトムナビ ========== */
+.bottom-nav {
+  display: flex;
+  border-top: 1px solid var(--gray-200);
+  background: var(--white);
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-btn {
+  flex: 1;
+  padding: 12px 0 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--gray-400);
+  font-family: var(--font-body);
+  font-size: 12px;
+  transition: color 0.3s;
+}
+.nav-btn.active { color: var(--green-600); }
+.nav-icon { font-size: 22px; }
+
+/* ========== ログイン画面 ========== */
+#loginScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  max-width: 520px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, var(--green-900) 0%, var(--green-700) 100%);
+  text-align: center;
+  padding: 32px;
+}
+.login-logo {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+}
+.login-logo span { color: var(--gold); }
+.login-sub {
+  color: rgba(255,255,255,0.7);
+  font-size: 15px;
+  margin-bottom: 48px;
+}
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 32px;
+  background: var(--white);
+  color: var(--gray-700);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.2s;
+  width: 100%;
+  max-width: 320px;
+}
+.login-btn:active { transform: scale(0.97); }
+.login-btn img { width: 22px; height: 22px; }
+.login-skip {
+  margin-top: 20px;
+  color: rgba(255,255,255,0.5);
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.login-loading {
+  display: none;
+  color: rgba(255,255,255,0.8);
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+/* ========== ユーザーバー（ヘッダー内） ========== */
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+}
+.user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+}
+.sync-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: rgba(76,175,110,0.3);
+  color: var(--green-200);
+}
+.logout-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+/* ========== ユーティリティ ========== */
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.filter-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--gray-300);
+  background: var(--white);
+  font-size: 14px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  color: var(--gray-600);
+}
+.filter-btn.active {
+  background: var(--green-600);
+  color: var(--white);
+  border-color: var(--green-600);
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="loginScreen">
+  <div class="login-logo">SWING <span>COACH</span></div>
+  <div class="login-sub">AIゴルフスイング診断アプリ</div>
+  <button class="login-btn" onclick="signInWithGoogle()">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
+    Googleアカウントでログイン
+  </button>
+  <button class="login-skip" onclick="skipLogin()">ログインせずに使う</button>
+  <div class="login-loading" id="loginLoading">ログイン中...</div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="header">
+    <div id="userBar" class="user-bar" style="display:none">
+      <div class="user-info">
+        <img id="userAvatar" class="user-avatar" src="" alt="">
+        <span id="userName"></span>
+        <span class="sync-badge" id="syncBadge">☁️ 同期中</span>
+      </div>
+      <button class="logout-btn" onclick="signOutUser()">ログアウト</button>
+    </div>
+    <div class="header-top">
+      <div class="app-title">SWING <span>COACH</span></div>
+      <div class="usage-badge">本日 <span class="count" id="usageCount">0</span>/20</div>
+    </div>
+    <div class="level-bar">
+      <span class="level-label" id="levelLabel">BEGINNER</span>
+      <span class="level-text" id="levelText">診断データなし</span>
+    </div>
+  </div>
+
+  <div class="tab-bar" id="swingTabs">
+    <button class="tab-btn active" data-type="full">フルスイング</button>
+    <button class="tab-btn" data-type="approach">アプローチ</button>
+    <button class="tab-btn" data-type="putt">パター</button>
+  </div>
+
+  <div class="main-content">
+    <!-- 診断ページ -->
+    <div class="page active" id="pageDiagnosis">
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('videoInput').click()">
+        <div class="upload-icon">🎥</div>
+        <div class="upload-text">
+          <strong>スイング動画をアップロード</strong>
+          タップして動画を選択
+        </div>
+        <div class="upload-hint">💡 動画が長くてもOK！<br>AIが最後のスイングを自動で見つけます</div>
+      </div>
+      <input type="file" id="videoInput" accept="video/*" capture="environment" hidden>
+
+      <div class="video-selected" id="videoSelected">
+        <div class="video-selected-info">
+          <span class="icon">✅</span>
+          <span id="videoFileName">動画を選択済み</span>
+        </div>
+        <button class="remove-video-btn" onclick="removeVideo()">✕</button>
+      </div>
+
+      <button class="analyze-btn" id="analyzeBtn" onclick="analyzeSwing()">🔍 AIで診断する</button>
+
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader"></div>
+        <div class="loading-text">スイングを分析中...</div>
+        <div class="loading-sub">動画から最後のスイングを検出しています</div>
+      </div>
+
+      <div class="result-area" id="resultArea">
+        <div class="level-card">
+          <div class="level-card-intro">あなたのスイングレベルは</div>
+          <div class="level-card-value" id="resultLevel">-</div>
+          <div class="level-card-score" id="resultScore"></div>
+          <div class="level-card-desc" id="resultLevelDesc"></div>
+          <div class="score-bar-container">
+            <div class="score-bar-fill" id="scoreBarFill" style="width:0%"></div>
+          </div>
+          <div class="score-bar-label">
+            <span>0</span><span>100点</span>
+          </div>
+        </div>
+
+        <div class="result-card">
+          <h3>✅ 良い点</h3>
+          <div id="resultGood"></div>
+        </div>
+        <div class="result-card">
+          <h3>⚠️ 改善ポイント</h3>
+          <div id="resultImprove"></div>
+        </div>
+        <div class="result-card">
+          <h3>🏋️ おすすめ練習ドリル</h3>
+          <div id="resultDrill"></div>
+        </div>
+
+        <textarea class="memo-input" id="memoInput" rows="2" placeholder="📝 メモ（今日の意識ポイントなど）"></textarea>
+
+        <div class="btn-group">
+          <button class="btn-primary" onclick="saveResult()">💾 この診断を保存する</button>
+          <button class="btn-outline" onclick="toggleChat()">💬 この動画について質問する</button>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="chatInput" placeholder="質問を入力..." onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="chat-send-btn" onclick="sendChat()">送信</button>
+          </div>
+        </div>
+
+        <button class="btn-ghost" onclick="resetDiagnosis()">🔄 新しい診断をする</button>
+      </div>
+    </div>
+
+    <!-- 履歴ページ -->
+    <div class="page" id="pageHistory">
+      <div class="section-title">📋 診断履歴</div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="all" onclick="filterHistory('all')">すべて</button>
+        <button class="filter-btn" data-filter="full" onclick="filterHistory('full')">フルスイング</button>
+        <button class="filter-btn" data-filter="approach" onclick="filterHistory('approach')">アプローチ</button>
+        <button class="filter-btn" data-filter="putt" onclick="filterHistory('putt')">パター</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- グラフページ -->
+    <div class="page" id="pageChart">
+      <div class="section-title">📈 上達の道のり</div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-chart-filter="all" onclick="filterChart('all')">すべて</button>
+        <button class="filter-btn" data-chart-filter="full" onclick="filterChart('full')">フルスイング</button>
+        <button class="filter-btn" data-chart-filter="approach" onclick="filterChart('approach')">アプローチ</button>
+        <button class="filter-btn" data-chart-filter="putt" onclick="filterChart('putt')">パター</button>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">スコア推移（100点満点）</div>
+        <canvas id="scoreChart" height="200"></canvas>
+      </div>
+      <div class="tendency-card">
+        <h3>🔁 よく指摘されるポイント</h3>
+        <div id="tendencyList">
+          <div class="history-empty" style="padding:16px">データがありません</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定ページ -->
+    <div class="page" id="pageSettings">
+      <div class="section-title">⚙️ 設定</div>
+
+      <div class="result-card" id="cloudInfoCard" style="display:none">
+        <h3>☁️ クラウド同期</h3>
+        <div id="cloudInfo" style="font-size:15px;line-height:2;color:var(--gray-600)">
+          Googleアカウントでログイン中。データはクラウドに自動保存されます。
+        </div>
+      </div>
+
+      <div class="result-card">
+        <h3>💾 データバックアップ</h3>
+        <p style="font-size:14px;color:var(--gray-500);margin-bottom:14px;line-height:1.7">
+          アプリを更新するときや別の端末に移すときに使います。<br>
+          バックアップを保存 → 新しいアプリで復元。
+        </p>
+        <div class="btn-group">
+          <button class="btn-primary" onclick="exportBackup()">📤 バックアップを保存</button>
+          <button class="btn-outline" onclick="document.getElementById('importFile').click()">📥 バックアップから復元</button>
+          <input type="file" id="importFile" accept=".json" hidden onchange="importBackup(event)">
+        </div>
+      </div>
+
+      <div class="result-card">
+        <h3>📊 データ状況</h3>
+        <div id="dataStats" style="font-size:15px;line-height:2;color:var(--gray-600)"></div>
+      </div>
+
+      <div class="result-card">
+        <h3>🗑 データ全削除</h3>
+        <p style="font-size:14px;color:var(--gray-500);margin-bottom:14px;line-height:1.7">
+          すべての診断履歴を削除します。この操作は元に戻せません。
+        </p>
+        <button class="delete-btn" onclick="clearAllData()">全データを削除する</button>
+      </div>
+
+      <div style="text-align:center;padding:16px;font-size:13px;color:var(--gray-400)">
+        Swing Coach v4.0 — Cloud Sync
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="showPage('diagnosis')">
+      <span class="nav-icon">🎥</span>診断
+    </button>
+    <button class="nav-btn" onclick="showPage('history')">
+      <span class="nav-icon">📋</span>履歴
+    </button>
+    <button class="nav-btn" onclick="showPage('chart')">
+      <span class="nav-icon">📈</span>推移
+    </button>
+    <button class="nav-btn" onclick="showPage('settings')">
+      <span class="nav-icon">⚙️</span>設定
+    </button>
+  </div>
+</div>
+
+<div class="overlay" id="historyDetail" onclick="if(event.target===this)closeDetail()">
+  <div class="overlay-card">
+    <button class="close-btn" onclick="closeDetail()">✕</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+// ========== Firebase 初期化 ==========
+const firebaseConfig = {
+  apiKey: "AIzaSyCorLgENNJHEF1vaeZNPHmMOyWYLoQsJ1M",
+  authDomain: "fukushi-ai.firebaseapp.com",
+  projectId: "fukushi-ai",
+  storageBucket: "fukushi-ai.firebasestorage.app",
+  messagingSenderId: "317938469675",
+  appId: "1:317938469675:web:f4b3a42f15ce205455936e"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ========== 設定 ==========
+const API_KEY = 'AIzaSyBvNcWsEOhPMeFTIjHTzWxkJ9XNRwzJI1w';
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + API_KEY;
+const MAX_DAILY = 20;
+const STORAGE_KEY = 'swing_coach_data';
+
+// ========== 状態管理 ==========
+let currentType = 'full';
+let currentVideoBase64 = null;
+let currentVideoMime = null;
+let currentResult = null;
+let chatHistory = [];
+let currentUser = null;
+let isCloudMode = false;
+
+// ========== 認証 ==========
+function signInWithGoogle() {
+  document.getElementById('loginLoading').style.display = 'block';
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => {
+    console.error('ログインエラー:', err);
+    document.getElementById('loginLoading').style.display = 'none';
+    if (err.code === 'auth/popup-blocked') {
+      alert('ポップアップがブロックされました。ブラウザの設定を確認してください。');
+    }
+  });
+}
+
+function skipLogin() {
+  currentUser = null;
+  isCloudMode = false;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('userBar').style.display = 'none';
+  initApp();
+}
+
+function signOutUser() {
+  if (!confirm('ログアウトしますか？')) return;
+  auth.signOut().then(() => {
+    currentUser = null;
+    isCloudMode = false;
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('userBar').style.display = 'none';
+  });
+}
+
+// 認証状態の監視
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    isCloudMode = true;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    // ユーザーバー表示
+    document.getElementById('userBar').style.display = 'flex';
+    document.getElementById('userAvatar').src = user.photoURL || '';
+    document.getElementById('userName').textContent = user.displayName || 'ユーザー';
+    // localStorageからクラウドへの初回移行
+    migrateToCloud().then(() => {
+      initApp();
+      updateSyncBadge('synced');
+    });
+  }
+});
+
+function updateSyncBadge(status) {
+  const badge = document.getElementById('syncBadge');
+  if (status === 'synced') { badge.textContent = '☁️ 同期済み'; badge.style.background = 'rgba(76,175,110,0.3)'; }
+  else if (status === 'syncing') { badge.textContent = '🔄 同期中'; badge.style.background = 'rgba(255,193,7,0.3)'; }
+  else { badge.textContent = '⚠️ オフライン'; badge.style.background = 'rgba(224,49,49,0.3)'; }
+}
+
+// ========== データ管理（localStorage + Firestore 二重化） ==========
+function loadDataLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { history: [], dailyUsage: { date: '', count: 0 } };
+    return JSON.parse(raw);
+  } catch { return { history: [], dailyUsage: { date: '', count: 0 } }; }
+}
+
+function saveDataLocal(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// Firestoreのユーザードキュメント参照
+function userDocRef() {
+  if (!currentUser) return null;
+  return db.collection('swing_coach_users').doc(currentUser.uid);
+}
+
+// Firestoreからデータ読み込み
+async function loadDataCloud() {
+  const ref = userDocRef();
+  if (!ref) return null;
+  try {
+    const doc = await ref.get();
+    if (doc.exists) return doc.data();
+    return { history: [], dailyUsage: { date: '', count: 0 } };
+  } catch (err) {
+    console.error('クラウド読み込みエラー:', err);
+    return null;
+  }
+}
+
+// Firestoreにデータ保存
+async function saveDataCloud(data) {
+  const ref = userDocRef();
+  if (!ref) return;
+  try {
+    updateSyncBadge('syncing');
+    await ref.set({
+      history: data.history || [],
+      dailyUsage: data.dailyUsage || { date: '', count: 0 },
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    updateSyncBadge('synced');
+  } catch (err) {
+    console.error('クラウド保存エラー:', err);
+    updateSyncBadge('error');
+  }
+}
+
+// 統合データ読み込み
+async function loadData() {
+  if (isCloudMode) {
+    const cloudData = await loadDataCloud();
+    if (cloudData) {
+      // ローカルにもキャッシュ
+      saveDataLocal(cloudData);
+      return cloudData;
+    }
+  }
+  return loadDataLocal();
+}
+
+// 統合データ保存
+async function saveData(data) {
+  saveDataLocal(data);
+  if (isCloudMode) {
+    await saveDataCloud(data);
+  }
+}
+
+// 同期的にデータを読む（グラフ描画等、非同期にできない箇所用）
+function loadDataSync() {
+  return loadDataLocal();
+}
+
+// 初回移行：localStorageにデータがあり、クラウドが空なら移行
+async function migrateToCloud() {
+  const local = loadDataLocal();
+  if (!local.history || local.history.length === 0) return;
+  const ref = userDocRef();
+  if (!ref) return;
+  try {
+    const doc = await ref.get();
+    if (!doc.exists || !(doc.data().history) || doc.data().history.length === 0) {
+      // クラウドが空なのでローカルデータを移行
+      await saveDataCloud(local);
+      console.log('ローカルデータをクラウドに移行しました');
+    }
+  } catch (err) {
+    console.error('移行エラー:', err);
+  }
+}
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+function getUsageToday() {
+  const data = loadDataSync();
+  return data.dailyUsage.date !== todayStr() ? 0 : data.dailyUsage.count;
+}
+
+async function incrementUsage() {
+  const data = loadDataSync();
+  if (data.dailyUsage.date !== todayStr()) data.dailyUsage = { date: todayStr(), count: 1 };
+  else data.dailyUsage.count++;
+  await saveData(data);
+  updateUsageDisplay();
+}
+
+function updateUsageDisplay() { document.getElementById('usageCount').textContent = getUsageToday(); }
+
+// ========== アプリ初期化 ==========
+function initApp() {
+  updateUsageDisplay();
+  updateLevelDisplay();
+}
+
+// ========== タブ切り替え ==========
+document.getElementById('swingTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentType = btn.dataset.type;
+});
+
+// ========== ページ切り替え ==========
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (page === 'diagnosis') {
+    document.getElementById('pageDiagnosis').classList.add('active');
+    document.querySelectorAll('.nav-btn')[0].classList.add('active');
+  } else if (page === 'history') {
+    document.getElementById('pageHistory').classList.add('active');
+    document.querySelectorAll('.nav-btn')[1].classList.add('active');
+    renderHistory();
+  } else if (page === 'chart') {
+    document.getElementById('pageChart').classList.add('active');
+    document.querySelectorAll('.nav-btn')[2].classList.add('active');
+    renderChart();
+    renderTendency();
+  } else if (page === 'settings') {
+    document.getElementById('pageSettings').classList.add('active');
+    document.querySelectorAll('.nav-btn')[3].classList.add('active');
+    renderDataStats();
+    const cloudCard = document.getElementById('cloudInfoCard');
+    if (isCloudMode) {
+      cloudCard.style.display = 'block';
+      document.getElementById('cloudInfo').innerHTML =
+        `✅ <strong>${currentUser.displayName}</strong> でログイン中<br>データはクラウドに自動保存されています`;
+    } else {
+      cloudCard.style.display = 'block';
+      document.getElementById('cloudInfo').innerHTML =
+        '⚠️ オフラインモード（ログインなし）<br>データはこの端末にのみ保存されています<br><button class="btn-outline" style="margin-top:10px;padding:10px" onclick="location.reload()">ログインする</button>';
+    }
+  }
+}
+
+// ========== 動画アップロード ==========
+document.getElementById('videoInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) { alert('動画は20MB以下にしてください'); return; }
+  currentVideoMime = file.type;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    currentVideoBase64 = ev.target.result.split(',')[1];
+    document.getElementById('uploadArea').style.display = 'none';
+    document.getElementById('videoSelected').classList.add('active');
+    document.getElementById('videoFileName').textContent = file.name.length > 25 ? file.name.slice(0, 25) + '...' : file.name;
+    document.getElementById('analyzeBtn').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+function removeVideo() {
+  currentVideoBase64 = null;
+  currentVideoMime = null;
+  document.getElementById('videoSelected').classList.remove('active');
+  document.getElementById('uploadArea').style.display = 'block';
+  document.getElementById('analyzeBtn').style.display = 'none';
+  document.getElementById('videoInput').value = '';
+}
+
+// ========== AI診断 ==========
+function typeLabel(type) {
+  return { full: 'フルスイング', approach: 'アプローチ', putt: 'パター' }[type] || type;
+}
+
+// 5段階スコアを100点満点に変換（表示用）
+function scoreTo100(score5) {
+  const map = { 1: 20, 2: 40, 3: 60, 4: 80, 5: 95 };
+  return map[score5] || 0;
+}
+
+// 100点からゴルフスコア目安を返す
+function scoreToGolfScore(score100) {
+  if (score100 >= 90) return 'スコア72前後';
+  if (score100 >= 75) return 'スコア80前後';
+  if (score100 >= 55) return 'スコア95前後';
+  if (score100 >= 35) return 'スコア105前後';
+  return 'スコア115前後';
+}
+
+async function callGemini(prompt, includeVideo = false) {
+  const parts = [];
+  if (includeVideo && currentVideoBase64) {
+    parts.push({ inlineData: { mimeType: currentVideoMime || 'video/mp4', data: currentVideoBase64 } });
+  }
+  parts.push({ text: prompt });
+  const body = { contents: [{ parts }], generationConfig: { temperature: 0.7, maxOutputTokens: 2048 } };
+  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error?.message || 'API通信エラー'); }
+  const json = await res.json();
+  return json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+async function analyzeSwing() {
+  if (!currentVideoBase64) return alert('動画をアップロードしてください');
+  if (getUsageToday() >= MAX_DAILY) return alert('本日の利用上限（20回）に達しました。明日またお試しください。');
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.style.display = 'none';
+  document.getElementById('loadingOverlay').classList.add('active');
+  const swingType = typeLabel(currentType);
+
+  const prompt = `あなたはPGAティーチングプロです。アップロードされた動画の中から「最後に行われたスイング」を見つけ、その${swingType}を分析してください。
+動画が長い場合でも、必ず最後のスイングのみを診断対象としてください。
+
+以下のJSON形式「のみ」で回答してください（JSON以外は絶対に出力しないでください）：
+{
+  "score": 100点満点の数値(0-100の整数),
+  "golf_score": "推定ゴルフスコア（例：95前後、80台前半 など）",
+  "level": "レベル名（例：中級者、上級者、初心者 など簡潔に）",
+  "summary": "一言コメント（1文で）",
+  "good": ["良い点を2-3個"],
+  "improve": ["改善ポイントを2-3個、具体的に"],
+  "improve_keywords": ["改善ポイントの短いキーワードを各1つ（例：インサイド引きすぎ、体の回転不足、右肘の開き など）"],
+  "drill": ["おすすめ練習ドリルを1-2個、やり方を含めて"]
+}
+
+スコア基準（${swingType}）：
+- 0-20点: 基礎が未完成。まずは基本フォームから
+- 21-40点: 基本はできているが大きな課題あり（ゴルフスコア110-120）
+- 41-60点: 一定の形ができている（ゴルフスコア100前後）
+- 61-80点: 安定感あり。微調整で大きく伸びる（ゴルフスコア80-90台）
+- 81-100点: ほぼ完成。プロに近い（ゴルフスコア70台）
+
+動画が見えない場合もスイング全般のアドバイスを提供してください。`;
+
+  try {
+    const response = await callGemini(prompt, true);
+    incrementUsage();
+    let result;
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      result = JSON.parse(jsonMatch[0]);
+    } catch {
+      result = { score: 50, golf_score: '判定中', level: '判定中', summary: '動画の分析が困難でした', good: ['動画をアップロードできています'], improve: ['より鮮明な動画で再度お試しください'], improve_keywords: ['動画品質'], drill: ['基本の素振り練習'] };
+    }
+    currentResult = { ...result, type: currentType, date: new Date().toISOString() };
+    chatHistory = [{ role: 'user', text: prompt }, { role: 'ai', text: response }];
+    displayResult(result);
+  } catch (err) {
+    alert('エラー: ' + err.message);
+    btn.style.display = 'block';
+    btn.disabled = false;
+  }
+  document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+function displayResult(r) {
+  const score = r.score || 0;
+  document.getElementById('resultLevel').textContent = r.golf_score || scoreToGolfScore(score);
+  document.getElementById('resultScore').textContent = `100点満点中 ${score}点`;
+  document.getElementById('resultLevelDesc').textContent = r.summary || '';
+  document.getElementById('scoreBarFill').style.width = score + '%';
+  document.getElementById('resultGood').innerHTML = '<ul>' + (r.good || []).map(g => `<li>${g}</li>`).join('') + '</ul>';
+  document.getElementById('resultImprove').innerHTML = '<ul>' + (r.improve || []).map(i => `<li>${i}</li>`).join('') + '</ul>';
+  document.getElementById('resultDrill').innerHTML = '<ul>' + (r.drill || []).map(d => `<li>${d}</li>`).join('') + '</ul>';
+  document.getElementById('resultArea').classList.add('active');
+  document.getElementById('analyzeBtn').style.display = 'none';
+}
+
+async function saveResult() {
+  if (!currentResult) return;
+  const data = loadDataSync();
+  currentResult.memo = document.getElementById('memoInput').value;
+  data.history.unshift(currentResult);
+  if (data.history.length > 200) data.history = data.history.slice(0, 200);
+  await saveData(data);
+  updateLevelDisplay();
+  alert('保存しました！');
+}
+
+function resetDiagnosis() {
+  removeVideo();
+  document.getElementById('resultArea').classList.remove('active');
+  document.getElementById('chatArea').classList.remove('active');
+  document.getElementById('memoInput').value = '';
+  document.getElementById('chatMessages').innerHTML = '';
+  currentResult = null;
+  chatHistory = [];
+}
+
+// ========== チャット ==========
+function toggleChat() { document.getElementById('chatArea').classList.toggle('active'); }
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  if (getUsageToday() >= MAX_DAILY) return alert('本日の利用上限に達しました');
+  input.value = '';
+  appendChatMsg(msg, 'user');
+  const loadingId = appendChatMsg('考え中...', 'ai loading');
+  const contextPrompt = `あなたはPGAティーチングプロです。先ほどの診断結果を踏まえて回答してください。\n\n診断結果: ${JSON.stringify(currentResult)}\n\n質問: ${msg}\n\nわかりやすく具体的に回答してください。`;
+  try {
+    const reply = await callGemini(contextPrompt, true);
+    incrementUsage();
+    removeChatMsg(loadingId);
+    appendChatMsg(reply, 'ai');
+  } catch (err) {
+    removeChatMsg(loadingId);
+    appendChatMsg('エラー: ' + err.message, 'ai');
+  }
+}
+
+function appendChatMsg(text, className) {
+  const div = document.createElement('div');
+  const id = 'msg-' + Date.now();
+  div.id = id;
+  div.className = `chat-msg ${className}`;
+  div.textContent = text;
+  const c = document.getElementById('chatMessages');
+  c.appendChild(div);
+  c.scrollTop = c.scrollHeight;
+  return id;
+}
+function removeChatMsg(id) { const el = document.getElementById(id); if (el) el.remove(); }
+
+// ========== 履歴 ==========
+let historyFilter = 'all';
+function filterHistory(f) {
+  historyFilter = f;
+  document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  renderHistory();
+}
+
+function renderHistory() {
+  const data = loadDataSync();
+  let items = data.history || [];
+  if (historyFilter !== 'all') items = items.filter(i => i.type === historyFilter);
+  const list = document.getElementById('historyList');
+  if (items.length === 0) {
+    list.innerHTML = '<div class="history-empty"><div class="empty-icon">📋</div>まだ診断履歴がありません</div>';
+    return;
+  }
+  list.innerHTML = items.map((item) => {
+    const d = new Date(item.date);
+    const dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const origIdx = data.history.indexOf(item);
+    const score = item.score || 0;
+    return `<div class="history-item" onclick="showDetail(${origIdx})">
+      <div class="history-item-header">
+        <span class="history-date">${dateStr}</span>
+        <span class="history-type ${item.type || 'full'}">${typeLabel(item.type)}</span>
+      </div>
+      <div class="history-level">${item.golf_score || item.level || '-'}</div>
+      <div class="history-score-sub">100点満点中 ${score}点</div>
+      ${item.memo ? `<div class="history-memo">📝 ${item.memo}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function showDetail(index) {
+  const data = loadDataSync();
+  const item = data.history[index];
+  if (!item) return;
+  const d = new Date(item.date);
+  const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const score = item.score || 0;
+  document.getElementById('detailContent').innerHTML = `
+    <div style="margin-bottom:16px">
+      <span class="history-type ${item.type}" style="display:inline-block;margin-bottom:8px">${typeLabel(item.type)}</span>
+      <div class="history-date">${dateStr}</div>
+    </div>
+    <div class="level-card" style="margin-bottom:14px">
+      <div class="level-card-intro">あなたのスイングレベルは</div>
+      <div class="level-card-value">${item.golf_score || item.level || '-'}</div>
+      <div class="level-card-score">100点満点中 ${score}点</div>
+      <div class="level-card-desc">${item.summary || ''}</div>
+      <div class="score-bar-container"><div class="score-bar-fill" style="width:${score}%"></div></div>
+      <div class="score-bar-label"><span>0</span><span>100点</span></div>
+    </div>
+    <div class="result-card"><h3>✅ 良い点</h3><ul>${(item.good||[]).map(g=>`<li>${g}</li>`).join('')}</ul></div>
+    <div class="result-card"><h3>⚠️ 改善ポイント</h3><ul>${(item.improve||[]).map(i=>`<li>${i}</li>`).join('')}</ul></div>
+    <div class="result-card"><h3>🏋️ 練習ドリル</h3><ul>${(item.drill||[]).map(d=>`<li>${d}</li>`).join('')}</ul></div>
+    ${item.memo ? `<div class="result-card"><h3>📝 メモ</h3><p style="font-size:15px;line-height:1.8">${item.memo}</p></div>` : ''}
+    <button class="delete-btn" onclick="deleteHistory(${index})">🗑 この記録を削除</button>
+  `;
+  document.getElementById('historyDetail').classList.add('active');
+}
+function closeDetail() { document.getElementById('historyDetail').classList.remove('active'); }
+async function deleteHistory(index) {
+  if (!confirm('この記録を削除しますか？')) return;
+  const data = loadDataSync();
+  data.history.splice(index, 1);
+  await saveData(data);
+  closeDetail();
+  renderHistory();
+  updateLevelDisplay();
+}
+
+// ========== グラフ ==========
+let chartFilter = 'all';
+function filterChart(f) {
+  chartFilter = f;
+  document.querySelectorAll('[data-chart-filter]').forEach(b => b.classList.toggle('active', b.dataset.chartFilter === f));
+  renderChart();
+  renderTendency();
+}
+
+function renderChart() {
+  const canvas = document.getElementById('scoreChart');
+  const ctx = canvas.getContext('2d');
+  const data = loadDataSync();
+  let items = [...(data.history || [])].reverse();
+  if (chartFilter !== 'all') items = items.filter(i => i.type === chartFilter);
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const cw = rect.width - 36; // chart-containerのpadding(18px*2)を引く
+  canvas.width = cw * dpr;
+  canvas.height = 200 * dpr;
+  canvas.style.width = cw + 'px';
+  canvas.style.height = '200px';
+  ctx.scale(dpr, dpr);
+  const W = cw, H = 200;
+  const pad = { top: 20, right: 30, bottom: 30, left: 36 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+  ctx.clearRect(0, 0, W, H);
+
+  if (items.length < 2) {
+    ctx.fillStyle = '#adb5bd';
+    ctx.font = '14px "Zen Kaku Gothic New"';
+    ctx.textAlign = 'center';
+    ctx.fillText('2件以上のデータが必要です', W / 2, H / 2);
+    return;
+  }
+
+  // グリッド（0, 20, 40, 60, 80, 100）
+  [0, 20, 40, 60, 80, 100].forEach(v => {
+    const y = pad.top + plotH - (plotH * v / 100);
+    ctx.strokeStyle = '#e9ecef';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+    ctx.fillStyle = '#adb5bd';
+    ctx.font = '10px "Zen Kaku Gothic New"';
+    ctx.textAlign = 'right';
+    ctx.fillText(v, pad.left - 6, y + 4);
+  });
+
+  const points = items.map((item, i) => ({
+    x: pad.left + (plotW * i / (items.length - 1)),
+    y: pad.top + plotH - (plotH * (item.score || 0) / 100)
+  }));
+
+  // ライン
+  ctx.strokeStyle = '#2d7a48';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+
+  // エリア
+  const areaGrad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+  areaGrad.addColorStop(0, 'rgba(56,150,90,0.2)');
+  areaGrad.addColorStop(1, 'rgba(56,150,90,0)');
+  ctx.fillStyle = areaGrad;
+  ctx.beginPath();
+  points.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length - 1].x, H - pad.bottom);
+  ctx.lineTo(points[0].x, H - pad.bottom);
+  ctx.fill();
+
+  // ポイント
+  points.forEach(p => {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#2d7a48';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  });
+
+  // 日付ラベル
+  ctx.fillStyle = '#868e96';
+  ctx.font = '11px "Zen Kaku Gothic New"';
+  ctx.textAlign = 'left';
+  const fd = new Date(items[0].date);
+  ctx.fillText(`${fd.getMonth()+1}/${fd.getDate()}`, pad.left, H - 8);
+  ctx.textAlign = 'right';
+  const ld = new Date(items[items.length-1].date);
+  ctx.fillText(`${ld.getMonth()+1}/${ld.getDate()}`, W - pad.right, H - 8);
+}
+
+// ========== よく指摘されるポイント（キーワードでまとめ+折りたたみ） ==========
+function renderTendency() {
+  const data = loadDataSync();
+  let items = data.history || [];
+  if (chartFilter !== 'all') items = items.filter(i => i.type === chartFilter);
+
+  // キーワードごとに元の文章をまとめる
+  const groups = {};
+  items.forEach(item => {
+    const keywords = item.improve_keywords || [];
+    const improves = item.improve || [];
+    improves.forEach((text, i) => {
+      // キーワードがあればそれをキーに、なければ最初の15文字をキーにする
+      const key = (keywords[i] || text.slice(0, 15)).trim();
+      if (!groups[key]) groups[key] = [];
+      // 同じ全文は重複させない
+      if (!groups[key].includes(text)) groups[key].push(text);
+    });
+  });
+
+  // 出現回数（=紐づくimprove文の数）でソートし上位5件
+  const sorted = Object.entries(groups)
+    .map(([key, texts]) => ({ key, texts, count: texts.length }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const el = document.getElementById('tendencyList');
+  if (sorted.length === 0) {
+    el.innerHTML = '<div style="padding:12px;text-align:center;color:#adb5bd;font-size:14px">データがありません</div>';
+    return;
+  }
+
+  el.innerHTML = sorted.map((item, idx) => `
+    <div class="tendency-item" id="tend-${idx}">
+      <div class="tendency-header" onclick="toggleTendency(${idx})">
+        <span>${item.key}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="tendency-count">${item.count}回</span>
+          <span class="tendency-arrow">▼</span>
+        </div>
+      </div>
+      <div class="tendency-details">
+        ${item.texts.map(t => `<div class="tendency-detail-item">${t}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// 折りたたみの開閉を制御する関数
+function toggleTendency(idx) {
+  document.getElementById('tend-' + idx).classList.toggle('open');
+}
+
+// ========== レベル表示 ==========
+function updateLevelDisplay() {
+  const data = loadDataSync();
+  const items = data.history || [];
+  if (items.length === 0) {
+    document.getElementById('levelLabel').textContent = 'BEGINNER';
+    document.getElementById('levelText').textContent = '診断データなし';
+    return;
+  }
+  const recent = items.slice(0, 10);
+  const avg = Math.round(recent.reduce((s, i) => s + (i.score || 0), 0) / recent.length);
+  let label, text;
+  if (avg >= 85) { label = 'SCRATCH'; text = `スコア72前後（平均${avg}点）`; }
+  else if (avg >= 70) { label = 'SINGLE'; text = `スコア80前後（平均${avg}点）`; }
+  else if (avg >= 55) { label = '90s'; text = `スコア90台（平均${avg}点）`; }
+  else if (avg >= 40) { label = '100+'; text = `スコア100前後（平均${avg}点）`; }
+  else if (avg >= 25) { label = '110+'; text = `スコア110台（平均${avg}点）`; }
+  else { label = 'START'; text = `まずは基本から（平均${avg}点）`; }
+  document.getElementById('levelLabel').textContent = label;
+  document.getElementById('levelText').textContent = text;
+}
+
+// ========== バックアップ・復元 ==========
+// データをJSONファイルとしてダウンロードする
+function exportBackup() {
+  const data = loadDataSync();
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `swing_coach_backup_${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert('バックアップを保存しました！');
+}
+
+// JSONファイルからデータを復元する
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.history || !Array.isArray(imported.history)) {
+        alert('正しいバックアップファイルではありません');
+        return;
+      }
+      const current = loadDataSync();
+      const mergeChoice = current.history.length > 0
+        ? confirm(`現在${current.history.length}件のデータがあります。\n\nOK → 既存データに追加（マージ）\nキャンセル → 既存データを上書き`)
+        : false;
+
+      if (mergeChoice) {
+        const existingDates = new Set(current.history.map(h => h.date));
+        const newItems = imported.history.filter(h => !existingDates.has(h.date));
+        current.history = [...current.history, ...newItems].sort((a, b) => new Date(b.date) - new Date(a.date));
+        await saveData(current);
+      } else {
+        await saveData(imported);
+      }
+      updateLevelDisplay();
+      updateUsageDisplay();
+      renderDataStats();
+      alert(`復元完了！（${imported.history.length}件のデータ）`);
+    } catch {
+      alert('ファイルの読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// データ統計を表示する
+function renderDataStats() {
+  const data = loadDataSync();
+  const h = data.history || [];
+  const full = h.filter(i => i.type === 'full').length;
+  const approach = h.filter(i => i.type === 'approach').length;
+  const putt = h.filter(i => i.type === 'putt').length;
+  const bytes = new Blob([JSON.stringify(data)]).size;
+  const kb = (bytes / 1024).toFixed(1);
+  document.getElementById('dataStats').innerHTML = `
+    📋 診断データ：<strong>${h.length}件</strong><br>
+    ⛳ フルスイング：${full}件 ／ 🎯 アプローチ：${approach}件 ／ 🏌️ パター：${putt}件<br>
+    💿 データサイズ：${kb} KB（上限 約5,000 KB）
+  `;
+}
+
+// 全データ削除
+async function clearAllData() {
+  if (!confirm('本当にすべてのデータを削除しますか？\nこの操作は元に戻せません。')) return;
+  if (!confirm('最終確認です。全データを削除してよろしいですか？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  if (isCloudMode) {
+    const ref = userDocRef();
+    if (ref) await ref.delete();
+  }
+  updateLevelDisplay();
+  updateUsageDisplay();
+  renderDataStats();
+  alert('全データを削除しました');
+}
+
+// ========== 初期化 ==========
+// 認証状態の変化を待って初期化する（onAuthStateChangedで処理）
+// スキップログインの場合はskipLogin()内でinitApp()を呼ぶ
+</script>
+</body>
+</html>
